@@ -6,6 +6,7 @@ import Projects from "../pages/Projects";
 import Experience from "../pages/Experience";
 import Certifications from "../pages/Certifications";
 import Contact from "../pages/Contact";
+import ChatBot from "../pages/ChatBot";
 
 const AppRoutes = () => {
   return (
@@ -17,6 +18,7 @@ const AppRoutes = () => {
       <Route path="/experience" element={<Experience />} />
       <Route path="/certifications" element={<Certifications />} />
       <Route path="/contact" element={<Contact />} />
+      <Route path="/chatbot" element={<ChatBot />} />
     </Routes>
   );
 };
