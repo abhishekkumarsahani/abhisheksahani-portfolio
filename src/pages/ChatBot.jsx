@@ -1,706 +1,432 @@
-import { useEffect, useRef, useState } from "react";
-import { 
-  Send, 
-  Wifi, 
-  WifiOff, 
-  Bot, 
-  User, 
-  AlertCircle,
-  X,
-  Minimize2,
-  Maximize2
-} from "lucide-react";
+import {
+  Drawer,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Toolbar,
+  Box,
+  Typography,
+  Divider,
+  useTheme,
+  alpha,
+  Tooltip,
+  Collapse,
+  Avatar,
+  Chip,
+  Badge,
+  useMediaQuery,
+  IconButton,
+} from "@mui/material";
 
-const ChatBot = () => {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [connected, setConnected] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
+import {
+  Dashboard,
+  People,
+  Settings,
+  Event,
+  Payments,
+  Store,
+  Call,
+  Badge as BadgeIcon,
+  AccountBalance,
+  CalendarMonth,
+  ViewCarousel,
+  ReportProblem,
+  ExpandLess,
+  ExpandMore,
+  ChevronLeft,
+  ChevronRight,
+  Notifications,
+  Logout,
+  Brightness4,
+  Brightness7,
+  Menu as MenuIcon,
+} from "@mui/icons-material";
 
-  const socketRef = useRef(null);
-  const chatEndRef = useRef(null);
-  const hasConnectedOnce = useRef(false);
-  const typingTimeoutRef = useRef(null);
+import { useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping]);
+const drawerWidth = 280;
+const collapsedWidth = 80;
 
-  useEffect(() => {
-    const connectWebSocket = () => {
-      socketRef.current = new WebSocket(
-        "wss://testing.esnep.com/wsock/api/chat/connect"
-      );
+const menuItems = [
+  {
+    section: "CORE",
+    items: [
+      { text: "Dashboard", icon: <Dashboard />, path: "/admin/dashboard"},
+      { text: "Users", icon: <People />, path: "/admin/users"},
+    ],
+  },
+  {
+    section: "TOLE MANAGEMENT",
+    items: [
+      { text: "Tole", icon: <Store />, path: "/admin/tole" },
+      { text: "Helpline", icon: <Call />, path: "/admin/helpline"},
+      { text: "Events", icon: <Event />, path: "/admin/event"},
+      { text: "Slider", icon: <ViewCarousel />, path: "/admin/slider" },
+      { text: "Government Identity", icon: <BadgeIcon />, path: "/admin/government-identity" },
+    ],
+  },
+  {
+    section: "COMPLAINTS",
+    items: [
+      { text: "Complain Topics", icon: <ReportProblem />, path: "/admin/complain" },
+      { text: "Complains", icon: <ReportProblem />, path: "/admin/complaints"},
+    ],
+  },
+  {
+    section: "FINANCE",
+    items: [
+      { text: "Payments", icon: <Payments />, path: "/admin/payments" },
+      { text: "Account Ledger", icon: <AccountBalance />, path: "/admin/ledger" },
+      { text: "Income Expense", icon: <AccountBalance />, path: "/admin/income-expense" },
+      { text: "Management Year", icon: <CalendarMonth />, path: "/admin/management-year" },
+    ],
+  },
+  {
+    section: "SYSTEM",
+    items: [
+      { text: "Settings", icon: <Settings />, path: "/admin/settings" },
+    ],
+  },
+];
 
-      socketRef.current.onopen = () => {
-        setConnected(true);
-        hasConnectedOnce.current = true;
+const AdminSidebar = ({ sidebarOpen, toggleSidebar, toggleDarkMode, isDarkMode }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
+  const [expandedSections, setExpandedSections] = useState({});
+  const [activeSection, setActiveSection] = useState(null);
 
-        addMessage(
-          "bot",
-          "👋 Welcome to BEWELL! I'm your health assistant. How can I help you today?"
-        );
-      };
-
-      socketRef.current.onmessage = (event) => {
-        if (typingTimeoutRef.current) {
-          clearTimeout(typingTimeoutRef.current);
-        }
-        
-        setIsTyping(false);
-        addMessage("bot", event.data);
-      };
-
-      socketRef.current.onerror = () => {
-        if (!hasConnectedOnce.current) return;
-        addMessage("system", "⚠️ Connection error. Please try again.");
-      };
-
-      socketRef.current.onclose = () => {
-        setConnected(false);
-        if (!hasConnectedOnce.current) return;
-        addMessage("system", "🔌 Disconnected. Click the reconnect button to restore connection.");
-      };
-    };
-
-    connectWebSocket();
-
-    return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-      socketRef.current?.close();
-    };
-  }, []);
-
-  const addMessage = (sender, text) => {
-    setMessages((prev) => [...prev, { 
-      sender, 
-      text,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }]);
+  const gradientColors = {
+    primary: theme.palette.primary.main,
+    secondary: theme.palette.secondary.main,
+    accent: theme.palette.success.main,
   };
 
-  const simulateTyping = () => {
-    setIsTyping(true);
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-    typingTimeoutRef.current = setTimeout(() => {
-      setIsTyping(false);
-    }, 3000);
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
   };
 
-  const sendMessage = () => {
-    if (!input.trim() || !connected) return;
-
-    socketRef.current.send(input);
-    addMessage("user", input);
-    setInput("");
-    simulateTyping();
+  const handleLogout = () => {
+    localStorage.removeItem("adminUser");
+    navigate("/admin/login");
   };
 
-  const reconnect = () => {
-    if (socketRef.current?.readyState === WebSocket.OPEN) return;
-    
-    addMessage("system", "🔄 Attempting to reconnect...");
-    setConnected(false);
-    
-    try {
-      socketRef.current = new WebSocket(
-        "wss://testing.esnep.com/wsock/api/chat/connect"
-      );
-      
-      socketRef.current.onopen = () => {
-        setConnected(true);
-        addMessage("system", "✅ Successfully reconnected!");
-      };
-    } catch (error) {
-      addMessage("system", "❌ Failed to reconnect. Please try again.");
-    }
-  };
-
-  const clearChat = () => {
-    if (window.confirm("Are you sure you want to clear the chat?")) {
-      setMessages([]);
-      addMessage("bot", "👋 Welcome back! How can I assist you today?");
-    }
-  };
-
-  const getMessageIcon = (sender) => {
-    switch (sender) {
-      case "bot": return <Bot size={16} />;
-      case "user": return <User size={16} />;
-      case "system": return <AlertCircle size={16} />;
-      default: return null;
-    }
-  };
-
-  if (isMinimized) {
-    return (
-      <div style={styles.minimizedContainer}>
-        <div style={styles.minimizedHeader}>
-          <div style={styles.minimizedTitle}>
-            <Bot size={20} />
-            <span>BEWELL Assistant</span>
-          </div>
-          <div style={styles.minimizedControls}>
-            <button 
-              onClick={() => setIsMinimized(false)}
-              style={styles.iconButton}
-            >
-              <Maximize2 size={18} />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const getMenuItemStyles = (isSelected) => ({
+    my: 0.5,
+    mx: sidebarOpen ? 1 : 0.5,
+    borderRadius: sidebarOpen ? 2 : '50%',
+    height: sidebarOpen ? 48 : 40,
+    width: sidebarOpen ? 'auto' : 40,
+    minWidth: sidebarOpen ? 'auto' : 40,
+    justifyContent: sidebarOpen ? "flex-start" : "center",
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    position: 'relative',
+    overflow: 'hidden',
+    '&::before': isSelected ? {
+      content: '""',
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      height: '100%',
+      width: '4px',
+      background: `linear-gradient(180deg, ${gradientColors.primary}, ${gradientColors.secondary})`,
+      borderRadius: '0 4px 4px 0',
+    } : {},
+    '&:hover': {
+      backgroundColor: alpha(isSelected ? gradientColors.primary : theme.palette.action.hover, 0.1),
+      transform: 'translateX(4px)',
+      '&::before': {
+        width: '4px',
+        opacity: 1,
+      },
+    },
+    '&.Mui-selected': {
+      backgroundColor: alpha(gradientColors.primary, 0.08),
+      color: gradientColors.primary,
+      '& .MuiListItemIcon-root': {
+        color: gradientColors.primary,
+      },
+    },
+    '&:active': {
+      transform: 'translateX(2px)',
+    },
+  });
 
   return (
-    <div style={styles.container}>
-      {/* Header */}
-      <div style={styles.header}>
-        <div style={styles.headerLeft}>
-          <div style={styles.botAvatar}>
-            <Bot size={24} />
-          </div>
-          <div>
-            <div style={styles.title}>BEWELL Health Assistant</div>
-            <div style={styles.subtitle}>AI-powered healthcare support</div>
-          </div>
-        </div>
-        <div style={styles.headerRight}>
-          <div style={styles.connectionStatus}>
-            <div style={{
-              ...styles.statusDot,
-              background: connected ? "#10b981" : "#ef4444"
-            }} />
-            <span>{connected ? "Connected" : "Disconnected"}</span>
-          </div>
-          <div style={styles.headerControls}>
-            <button 
-              onClick={() => setIsMinimized(true)}
-              style={styles.iconButton}
-              title="Minimize"
+    <Drawer
+      variant="permanent"
+      sx={{
+        width: sidebarOpen ? drawerWidth : collapsedWidth,
+        flexShrink: 0,
+        whiteSpace: "nowrap",
+        transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        '& .MuiDrawer-paper': {
+          width: sidebarOpen ? drawerWidth : collapsedWidth,
+          overflowX: "hidden",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          borderRight: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          background: sidebarOpen 
+            ? `linear-gradient(180deg, 
+                ${alpha(theme.palette.background.default, 0.95)} 0%, 
+                ${alpha(theme.palette.background.paper, 0.95)} 100%)`
+            : alpha(theme.palette.background.paper, 0.98),
+          backdropFilter: 'blur(10px)',
+          boxShadow: sidebarOpen 
+            ? `0 0 20px ${alpha(theme.palette.primary.main, 0.1)}`
+            : 'none',
+        },
+      }}
+    >
+      {/* HEADER SECTION */}
+      <Box>
+        {sidebarOpen ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 50,
+                height: 50,
+                borderRadius: 3,
+                background: `linear-gradient(45deg, ${gradientColors.primary}, ${gradientColors.secondary})`,
+                boxShadow: `0 4px 20px ${alpha(gradientColors.primary, 0.3)}`,
+              }}
             >
-              <Minimize2 size={20} />
-            </button>
-            <button 
-              onClick={clearChat}
-              style={styles.iconButton}
-              title="Clear chat"
+              <Store sx={{ fontSize: 28, color: 'white' }} />
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h6" fontWeight={700} noWrap>
+                Tole Admin
+              </Typography>
+              <Typography variant="caption" color="text.secondary" noWrap>
+                Management System
+              </Typography>
+            </Box>
+            <IconButton 
+              onClick={toggleSidebar}
+              size="small"
+              sx={{
+                borderRadius: 2,
+                background: alpha(theme.palette.action.hover, 0.1),
+                '&:hover': {
+                  background: alpha(theme.palette.action.hover, 0.2),
+                },
+              }}
             >
-              <X size={20} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Connection Banner */}
-      {!connected && (
-        <div style={styles.connectionBanner}>
-          <WifiOff size={16} />
-          <span>Connection lost</span>
-          <button onClick={reconnect} style={styles.reconnectButton}>
-            Reconnect
-          </button>
-        </div>
-      )}
-
-      {/* Chat Messages */}
-      <div style={styles.chatBox}>
-        {messages.length === 0 ? (
-          <div style={styles.welcomeContainer}>
-            <div style={styles.welcomeIcon}>
-              <Bot size={48} />
-            </div>
-            <h3 style={styles.welcomeTitle}>Welcome to BEWELL</h3>
-            <p style={styles.welcomeText}>
-              I'm your AI health assistant. I can help with medical information, 
-              appointment scheduling, and general health queries.
-            </p>
-            <div style={styles.suggestions}>
-              <button 
-                style={styles.suggestionButton}
-                onClick={() => {
-                  setInput("What are the symptoms of flu?");
-                  sendMessage();
-                }}
-              >
-                🤒 Flu symptoms
-              </button>
-              <button 
-                style={styles.suggestionButton}
-                onClick={() => {
-                  setInput("How to book an appointment?");
-                  sendMessage();
-                }}
-              >
-                📅 Book appointment
-              </button>
-              <button 
-                style={styles.suggestionButton}
-                onClick={() => {
-                  setInput("Tips for better sleep");
-                  sendMessage();
-                }}
-              >
-                😴 Sleep tips
-              </button>
-            </div>
-          </div>
+              <ChevronLeft />
+            </IconButton>
+          </Box>
         ) : (
-          <>
-            {messages.map((msg, i) => (
-              <div
-                key={i}
-                style={{
-                  ...styles.messageContainer,
-                  flexDirection: msg.sender === "user" ? "row-reverse" : "row",
-                }}
-              >
-                <div style={{
-                  ...styles.avatar,
-                  background: msg.sender === "user" 
-                    ? "#2563eb" 
-                    : msg.sender === "system"
-                    ? "#f59e0b"
-                    : "#6b7280"
-                }}>
-                  {getMessageIcon(msg.sender)}
-                </div>
-                <div style={{
-                  ...styles.messageWrapper,
-                  alignItems: msg.sender === "user" ? "flex-end" : "flex-start"
-                }}>
-                  <div style={styles.messageMeta}>
-                    <span style={styles.sender}>
-                      {msg.sender === "bot" ? "BEWELL Assistant" : 
-                       msg.sender === "system" ? "System" : "You"}
-                    </span>
-                    <span style={styles.timestamp}>{msg.timestamp}</span>
-                  </div>
-                  <div
-                    style={{
-                      ...styles.message,
-                      background: msg.sender === "user"
-                        ? "linear-gradient(135deg, #2563eb, #3b82f6)"
-                        : msg.sender === "system"
-                        ? "#fef3c7"
-                        : "#f3f4f6",
-                      color: msg.sender === "user"
-                        ? "#fff"
-                        : msg.sender === "system"
-                        ? "#92400e"
-                        : "#374151",
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
+            <Box
+              onClick={toggleSidebar}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 48,
+                height: 48,
+                borderRadius: 3,
+                background: `linear-gradient(45deg, ${gradientColors.primary}, ${gradientColors.secondary})`,
+                boxShadow: `0 4px 20px ${alpha(gradientColors.primary, 0.3)}`,
+                cursor: 'pointer',
+                transition: 'all 0.3s',
+                '&:hover': {
+                  transform: 'scale(1.05)',
+                },
+              }}
+            >
+              <Store sx={{ fontSize: 24, color: 'white' }} />
+            </Box>
+          </Box>
+        )}
+      </Box>
+
+      
+      {/* MENU SECTION */}
+      <Box sx={{ 
+        flex: 1, 
+        overflow: 'auto',
+        '&::-webkit-scrollbar': {
+          width: 4,
+        },
+        '&::-webkit-scrollbar-track': {
+          background: 'transparent',
+        },
+        '&::-webkit-scrollbar-thumb': {
+          background: alpha(theme.palette.primary.main, 0.2),
+          borderRadius: 2,
+        },
+      }}>
+        <List sx={{ px: sidebarOpen ? 1 : 0.5, py: 1 }}>
+          {menuItems.map((group) => (
+            <Box key={group.section} sx={{ mb: 0.5 }}>
+              {sidebarOpen && (
+                <ListItemButton
+                  onClick={() => toggleSection(group.section)}
+                  sx={{
+                    my: 0.5,
+                    mx: 1,
+                    borderRadius: 2,
+                    minHeight: 36,
+                    background: expandedSections[group.section] 
+                      ? alpha(gradientColors.primary, 0.05)
+                      : 'transparent',
+                  }}
+                >
+                  <Typography
+                    variant="overline"
+                    sx={{ 
+                      flex: 1,
+                      color: 'text.secondary', 
+                      fontWeight: 600,
+                      fontSize: '0.7rem',
+                      letterSpacing: '0.5px',
+                      opacity: 0.8,
                     }}
                   >
-                    {msg.text}
-                  </div>
-                </div>
-              </div>
-            ))}
-            {isTyping && (
-              <div style={styles.typingIndicator}>
-                <div style={styles.typingAvatar}>
-                  <Bot size={16} />
-                </div>
-                <div style={styles.typingBubble}>
-                  <div style={styles.typingDots}>
-                    <div style={styles.typingDot} />
-                    <div style={styles.typingDot} />
-                    <div style={styles.typingDot} />
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </>
-        )}
-      </div>
+                    {group.section}
+                  </Typography>
+                  {expandedSections[group.section] ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+                </ListItemButton>
+              )}
 
-      {/* Input Area */}
-      <div style={styles.inputContainer}>
-        <div style={styles.inputWrapper}>
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
-            placeholder={
-              connected
-                ? "Type your health question here..."
-                : "Connecting to BEWELL server..."
-            }
-            disabled={!connected}
-            style={styles.input}
-            rows="1"
-          />
-          <button
-            onClick={sendMessage}
-            style={{
-              ...styles.sendButton,
-              opacity: connected && input.trim() ? 1 : 0.5,
-              cursor: connected && input.trim() ? "pointer" : "not-allowed",
-            }}
-            disabled={!connected || !input.trim()}
-            title="Send message"
-          >
-            <Send size={20} />
-          </button>
-        </div>
-        <div style={styles.inputFooter}>
-          <div style={styles.connectionInfo}>
-            {connected ? (
-              <>
-                <Wifi size={12} />
-                <span style={styles.onlineText}>Live connection</span>
-              </>
-            ) : (
-              <>
-                <WifiOff size={12} />
-                <span style={styles.offlineText}>Offline</span>
-              </>
-            )}
-          </div>
-          <div style={styles.inputHint}>
-            Press Enter to send • Shift+Enter for new line
-          </div>
-        </div>
-      </div>
-    </div>
+              <Collapse 
+                in={!sidebarOpen || expandedSections[group.section] || expandedSections[group.section] === undefined}
+                timeout="auto"
+                unmountOnExit
+              >
+                {group.items.map((item) => {
+                  const isSelected = location.pathname === item.path;
+
+                  return (
+                    <Tooltip
+                      title={!sidebarOpen ? item.text : ""}
+                      placement="right"
+                      key={item.text}
+                      arrow
+                      enterDelay={300}
+                    >
+                      <ListItemButton
+                        selected={isSelected}
+                        onClick={() => navigate(item.path)}
+                        sx={getMenuItemStyles(isSelected)}
+                      >
+                        <ListItemIcon
+                          sx={{
+                            minWidth: sidebarOpen ? 36 : 24,
+                            color: isSelected ? gradientColors.primary : 'text.secondary',
+                            marginLeft: sidebarOpen ? 0 : '4px',
+                          }}
+                        >
+                          {item.badge ? (
+                            <Badge
+                              badgeContent={item.badge}
+                              color="error"
+                              size="small"
+                              sx={{
+                                '& .MuiBadge-badge': {
+                                  fontSize: '0.6rem',
+                                  height: 16,
+                                  minWidth: 16,
+                                },
+                              }}
+                            >
+                              {item.icon}
+                            </Badge>
+                          ) : (
+                            item.icon
+                          )}
+                        </ListItemIcon>
+
+                        {sidebarOpen && (
+                          <ListItemText
+                            primary={item.text}
+                            primaryTypographyProps={{ 
+                              fontSize: "0.875rem",
+                              fontWeight: isSelected ? 600 : 500,
+                            }}
+                            sx={{ ml: 1 }}
+                          />
+                        )}
+
+                        {sidebarOpen && item.badge && (
+                          <Chip
+                            label={item.badge}
+                            size="small"
+                            sx={{
+                              height: 20,
+                              fontSize: '0.65rem',
+                              fontWeight: 600,
+                              background: alpha(theme.palette.error.main, 0.1),
+                              color: theme.palette.error.main,
+                            }}
+                          />
+                        )}
+                      </ListItemButton>
+                    </Tooltip>
+                  );
+                })}
+              </Collapse>
+            </Box>
+          ))}
+        </List>
+      </Box>
+
+      {/* FOOTER SECTION */}
+      <Box sx={{ 
+        p: 2, 
+        borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+        background: alpha(gradientColors.primary, 0.02),
+      }}>
+        {sidebarOpen ? (
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <IconButton
+              onClick={handleLogout}
+              sx={{
+                flex: 1,
+                borderRadius: 2,
+                background: alpha(theme.palette.error.main, 0.1),
+                color: theme.palette.error.main,
+                '&:hover': {
+                  background: alpha(theme.palette.error.main, 0.2),
+                },
+              }}
+            >
+              <Logout fontSize="small" />
+              <Typography variant="button" sx={{ ml: 1, fontSize: '0.75rem' }}>
+                Logout
+              </Typography>
+            </IconButton>
+          </Box>
+        ) : (
+          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
+            <Tooltip title="Logout" placement="right">
+              <IconButton
+                onClick={handleLogout}
+                size="small"
+                sx={{
+                  borderRadius: 2,
+                  background: alpha(theme.palette.error.main, 0.1),
+                  color: theme.palette.error.main,
+                }}
+              >
+                <Logout fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
+      </Box>
+    </Drawer>
   );
 };
 
-const styles = {
-  container: {
-    maxWidth: "480px",
-    height: "700px",
-    margin: "40px auto",
-    display: "flex",
-    flexDirection: "column",
-    background: "#ffffff",
-    borderRadius: "20px",
-    boxShadow: "0 20px 60px rgba(0, 0, 0, 0.15)",
-    overflow: "hidden",
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-    border: "1px solid #e5e7eb",
-  },
-  minimizedContainer: {
-    position: "fixed",
-    bottom: "20px",
-    right: "20px",
-    width: "300px",
-    background: "#ffffff",
-    borderRadius: "12px",
-    boxShadow: "0 8px 30px rgba(0, 0, 0, 0.15)",
-    border: "1px solid #e5e7eb",
-    overflow: "hidden",
-  },
-  minimizedHeader: {
-    padding: "12px 16px",
-    background: "linear-gradient(135deg, #2563eb, #3b82f6)",
-    color: "#ffffff",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  minimizedTitle: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    fontWeight: "600",
-  },
-  minimizedControls: {
-    display: "flex",
-    gap: "4px",
-  },
-  header: {
-    padding: "20px 24px",
-    background: "linear-gradient(135deg, #2563eb, #3b82f6)",
-    color: "#ffffff",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  headerLeft: {
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-  },
-  botAvatar: {
-    width: "44px",
-    height: "44px",
-    borderRadius: "12px",
-    background: "rgba(255, 255, 255, 0.2)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    backdropFilter: "blur(10px)",
-  },
-  title: {
-    fontSize: "18px",
-    fontWeight: "700",
-  },
-  subtitle: {
-    fontSize: "12px",
-    opacity: 0.9,
-    marginTop: "2px",
-  },
-  headerRight: {
-    display: "flex",
-    alignItems: "center",
-    gap: "16px",
-  },
-  connectionStatus: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    fontSize: "12px",
-    background: "rgba(255, 255, 255, 0.1)",
-    padding: "6px 12px",
-    borderRadius: "20px",
-    backdropFilter: "blur(10px)",
-  },
-  statusDot: {
-    width: "8px",
-    height: "8px",
-    borderRadius: "50%",
-  },
-  headerControls: {
-    display: "flex",
-    gap: "8px",
-  },
-  iconButton: {
-    background: "none",
-    border: "none",
-    color: "#ffffff",
-    cursor: "pointer",
-    padding: "6px",
-    borderRadius: "6px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    transition: "background 0.2s",
-  },
-  connectionBanner: {
-    background: "#fef3c7",
-    color: "#92400e",
-    padding: "12px 24px",
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    fontSize: "14px",
-    fontWeight: "500",
-  },
-  reconnectButton: {
-    marginLeft: "auto",
-    background: "#f59e0b",
-    color: "#ffffff",
-    border: "none",
-    padding: "6px 12px",
-    borderRadius: "6px",
-    fontSize: "12px",
-    fontWeight: "600",
-    cursor: "pointer",
-    transition: "background 0.2s",
-  },
-  chatBox: {
-    flex: 1,
-    padding: "20px",
-    overflowY: "auto",
-    background: "#f9fafb",
-    display: "flex",
-    flexDirection: "column",
-    gap: "16px",
-  },
-  welcomeContainer: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    height: "100%",
-    textAlign: "center",
-    padding: "20px",
-  },
-  welcomeIcon: {
-    width: "80px",
-    height: "80px",
-    borderRadius: "20px",
-    background: "linear-gradient(135deg, #2563eb, #3b82f6)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#ffffff",
-    marginBottom: "20px",
-  },
-  welcomeTitle: {
-    fontSize: "24px",
-    fontWeight: "700",
-    color: "#1f2937",
-    marginBottom: "8px",
-  },
-  welcomeText: {
-    fontSize: "14px",
-    color: "#6b7280",
-    lineHeight: "1.5",
-    maxWidth: "320px",
-    marginBottom: "24px",
-  },
-  suggestions: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "10px",
-    width: "100%",
-    maxWidth: "280px",
-  },
-  suggestionButton: {
-    padding: "12px 16px",
-    background: "#ffffff",
-    border: "1px solid #e5e7eb",
-    borderRadius: "12px",
-    fontSize: "14px",
-    color: "#374151",
-    cursor: "pointer",
-    transition: "all 0.2s",
-    textAlign: "left",
-  },
-  messageContainer: {
-    display: "flex",
-    gap: "12px",
-    alignItems: "flex-start",
-  },
-  avatar: {
-    width: "32px",
-    height: "32px",
-    borderRadius: "10px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#ffffff",
-    flexShrink: 0,
-  },
-  messageWrapper: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
-    maxWidth: "calc(100% - 44px)",
-  },
-  messageMeta: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    marginBottom: "2px",
-  },
-  sender: {
-    fontSize: "12px",
-    fontWeight: "600",
-    color: "#4b5563",
-  },
-  timestamp: {
-    fontSize: "11px",
-    color: "#9ca3af",
-  },
-  message: {
-    padding: "12px 16px",
-    borderRadius: "18px",
-    fontSize: "14px",
-    lineHeight: "1.5",
-    wordBreak: "break-word",
-    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.05)",
-  },
-  typingIndicator: {
-    display: "flex",
-    gap: "12px",
-    alignItems: "flex-start",
-  },
-  typingAvatar: {
-    width: "32px",
-    height: "32px",
-    borderRadius: "10px",
-    background: "#6b7280",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#ffffff",
-  },
-  typingBubble: {
-    background: "#f3f4f6",
-    padding: "12px 20px",
-    borderRadius: "18px",
-    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.05)",
-  },
-  typingDots: {
-    display: "flex",
-    gap: "4px",
-  },
-  typingDot: {
-    width: "6px",
-    height: "6px",
-    borderRadius: "50%",
-    background: "#9ca3af",
-    animation: "typingAnimation 1.4s infinite ease-in-out",
-  },
-  inputContainer: {
-    padding: "20px 24px",
-    borderTop: "1px solid #e5e7eb",
-    background: "#ffffff",
-  },
-  inputWrapper: {
-    display: "flex",
-    gap: "12px",
-    marginBottom: "12px",
-  },
-  input: {
-    flex: 1,
-    padding: "14px 18px",
-    borderRadius: "14px",
-    border: "2px solid #e5e7eb",
-    fontSize: "14px",
-    fontFamily: "inherit",
-    outline: "none",
-    transition: "all 0.2s",
-    background: "#f9fafb",
-    resize: "none",
-    minHeight: "52px",
-    maxHeight: "120px",
-  },
-  sendButton: {
-    width: "52px",
-    height: "52px",
-    borderRadius: "14px",
-    border: "none",
-    background: "linear-gradient(135deg, #2563eb, #3b82f6)",
-    color: "#ffffff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-    transition: "all 0.2s",
-    flexShrink: 0,
-  },
-  inputFooter: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    fontSize: "12px",
-    color: "#6b7280",
-  },
-  connectionInfo: {
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-  },
-  onlineText: {
-    color: "#10b981",
-  },
-  offlineText: {
-    color: "#ef4444",
-  },
-  inputHint: {
-    opacity: 0.7,
-  },
-};
-
-export default ChatBot;
+export default AdminSidebar;
